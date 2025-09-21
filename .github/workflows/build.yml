@@ -20,8 +20,8 @@ jobs:
 
       - name: Install dependencies
         run: |
-          sudo apt-get update -y
-          sudo apt-get install -y \
+          apt-get update -y
+          apt-get install -y \
             git zip unzip openjdk-17-jdk \
             python3-pip python3-setuptools python3-wheel \
             libffi-dev libssl-dev libsqlite3-dev zlib1g-dev \
@@ -41,7 +41,6 @@ jobs:
           unzip sdk.zip -d latest
           rm sdk.zip
 
-          # FIX: pindahkan isi folder supaya sdkmanager ada di path yang benar
           mv latest/cmdline-tools/* latest/
           rm -rf latest/cmdline-tools
 
@@ -59,11 +58,11 @@ jobs:
         run: |
           echo "🚀 Starting Build..."
 
-          # Pastikan git tersedia
-          sudo apt-get update -y
-          sudo apt-get install -y git
+          # pastikan git tersedia
+          apt-get update -y
+          apt-get install -y git
 
-          # FIX: pastikan python-for-android ada
+          # pastikan python-for-android ada
           if [ ! -d ".buildozer/android/platform/python-for-android" ]; then
             echo "⚠️ python-for-android not found, cloning..."
             git clone https://github.com/kivy/python-for-android.git .buildozer/android/platform/python-for-android
