@@ -13,7 +13,6 @@ jobs:
     env:
       ANDROID_HOME: ${{ github.workspace }}/android-sdk
       ANDROID_SDK_ROOT: ${{ github.workspace }}/android-sdk
-      PATH: ${{ github.workspace }}/android-sdk/cmdline-tools/latest/bin:${{ github.workspace }}/android-sdk/platform-tools:${{ env.PATH }}
 
     steps:
     - name: Checkout repository
@@ -24,6 +23,22 @@ jobs:
       with:
         python-version: "3.10"
 
+    # Cache pip dependencies
+    - name: Cache pip
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+
+    # Cache Android SDK
+    - name: Cache Android SDK
+      uses: actions/cache@v3
+      with:
+        path: ${{ github.workspace }}/android-sdk
+        key: ${{ runner.os }}-android-sdk
+
     - name: Install dependencies
       run: |
         sudo apt update
@@ -33,22 +48,4 @@ jobs:
         pip install buildozer cython
 
     - name: Install Android SDK
-      run: |
-        mkdir -p $ANDROID_HOME/cmdline-tools
-        curl -fo tools.zip https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip
-        unzip -q tools.zip -d $ANDROID_HOME/cmdline-tools
-        mv $ANDROID_HOME/cmdline-tools/cmdline-tools $ANDROID_HOME/cmdline-tools/latest
-        export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH
-        yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses
-        $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --install "platform-tools" "platforms;android-33" "build-tools;35.0.0"
-
-    - name: Build APK with Buildozer
-      working-directory: ./robot-trading
-      run: |
-        buildozer -v android debug
-
-    - name: Upload APK
-      uses: actions/upload-artifact@v4
-      with:
-        name: my-apk
-        path: ./robot-trading/bin/*.apk
+      run:
