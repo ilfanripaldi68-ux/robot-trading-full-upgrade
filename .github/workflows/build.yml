@@ -1,4 +1,4 @@
-name: Build APK with Buildozer
+name: Build APK
 
 on:
   push:
@@ -21,17 +21,33 @@ jobs:
 
       - name: Install dependencies
         run: |
-          sudo apt-get update
-          sudo apt-get install -y zip unzip openjdk-17-jdk
           python -m pip install --upgrade pip
           pip install buildozer cython
 
-      - name: Build APK
+      - name: Install system dependencies
         run: |
-          buildozer -v android debug
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            git \
+            unzip \
+            zip \
+            openjdk-17-jdk \
+            python3-pip \
+            python3-setuptools \
+            python3-wheel \
+            libffi-dev \
+            libssl-dev \
+            liblzo2-dev \
+            libsqlite3-dev \
+            zlib1g-dev
 
-      - name: Upload APK
+      - name: Build APK with Buildozer
+        working-directory: ./robot-trading   # <-- pindah ke folder yang ada buildozer.spec
+        run: buildozer -v android debug
+
+      - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: app-debug
-          path: bin/*.apk
+          name: trading-app-apk
+          path: robot-trading/bin/*.apk
