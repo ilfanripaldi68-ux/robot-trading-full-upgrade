@@ -1,4 +1,4 @@
 kivy==2.3.1
 ccxt==4.5.5
 pandas==2.3.2
-git+https://github.com/twopirllc/pandas-ta.git@master#egg=pandas_ta
+https://github.com/twopirllc/pandas-ta/archive/refs/tags/v0.3.14b0.zip
