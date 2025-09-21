@@ -1,43 +1,125 @@
-name: Build APK
+name: Build Android APK (fix aidl)
 
 on:
   push:
     branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout repo
         uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v4
         with:
           python-version: "3.10"
 
-      - name: Install dependencies
+      - name: Install system deps & Buildozer
         run: |
-          sudo apt update
-          sudo apt install -y python3-pip git zip unzip openjdk-17-jdk \
-            libncurses6 libtinfo6 libffi-dev libssl-dev
-          pip install --upgrade pip
+          sudo apt-get update
+          sudo apt-get install -y python3-pip git zip unzip wget curl openjdk-17-jdk build-essential
+          python -m pip install --upgrade pip
           pip install buildozer cython
 
-      # 👉 Fix: copy buildozer.spec ke root
-      - name: Copy buildozer.spec
-        run: cp robot-trading/buildozer.spec ./buildozer.spec
-
-      - name: Build APK with Buildozer
-        working-directory: ./robot-trading
+      - name: Install Android cmdline-tools and prepare SDK (robust)
         run: |
+          set -euo pipefail
+
+          ANDROID_HOME="$HOME/android-sdk"
+          mkdir -p "$ANDROID_HOME"
+          TMPDIR=$(mktemp -d)
+          cd "$TMPDIR"
+
+          echo "Downloading commandline tools..."
+          wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O tools.zip
+
+          echo "Unzip..."
+          unzip -q tools.zip
+
+          # Find sdkmanager inside the extracted tree, then move its parent (cmdline-tools/...) to $ANDROID_HOME/cmdline-tools/latest
+          SDKMANAGER_PATH=$(find "$TMPDIR" -type f -name sdkmanager -print -quit)
+          if [ -z "$SDKMANAGER_PATH" ]; then
+            echo "ERROR: sdkmanager not found after unzip"
+            ls -R "$TMPDIR"
+            exit 1
+          fi
+          # sdkmanager is in .../cmdline-tools/.../bin/sdkmanager -> go up two dirs to get the cmdline-tools/<something>
+          CMDLINE_TOOLS_DIR=$(dirname "$(dirname "$SDKMANAGER_PATH")")
+          echo "Found sdkmanager at: $SDKMANAGER_PATH"
+          echo "Moving $CMDLINE_TOOLS_DIR -> $ANDROID_HOME/cmdline-tools/latest"
+          mkdir -p "$ANDROID_HOME/cmdline-tools"
+          rm -rf "$ANDROID_HOME/cmdline-tools/latest" || true
+          mv "$CMDLINE_TOOLS_DIR" "$ANDROID_HOME/cmdline-tools/latest"
+
+          # cleanup
+          rm -rf "$TMPDIR"
+
+          # export for this step
+          export PATH="$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH"
+
+          echo "Accepting licenses..."
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses || true
+
+          echo "Installing platform-tools, platforms and build-tools + NDK..."
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platform-tools" "platforms;android-33" "build-tools;33.0.2" "build-tools;36.1.0" "ndk;25.2.9519653"
+
+          # expose env to later steps
+          echo "ANDROID_HOME=$ANDROID_HOME" >> $GITHUB_ENV
+          echo "ANDROID_SDK_ROOT=$ANDROID_HOME" >> $GITHUB_ENV
+          echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/25.2.9519653" >> $GITHUB_ENV
+          echo "$ANDROID_HOME/cmdline-tools/latest/bin" >> $GITHUB_PATH
+          echo "$ANDROID_HOME/platform-tools" >> $GITHUB_PATH
+
+          # Make sure Buildozer will see build-tools at the location it checks:
+          mkdir -p /home/runner/.buildozer/android/platform
+          rm -rf /home/runner/.buildozer/android/platform/android-sdk || true
+          ln -s "$ANDROID_HOME" /home/runner/.buildozer/android/platform/android-sdk
+
+          # sanity checks
+          echo "==== SDK sanity ===="
+          ls -la "$ANDROID_HOME"
+          ls -la "$ANDROID_HOME/build-tools" || true
+          ls -la /home/runner/.buildozer/android/platform/android-sdk || true
+
+      - name: (debug) list sdkmanager & aidl
+        run: |
+          echo "sdkmanager version:"
+          if [ -f "$HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager" ]; then
+            "$HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager" --version || true
+          else
+            echo "sdkmanager not found!"
+            ls -R $HOME/android-sdk || true
+          fi
+          echo "Check aidl presence:"
+          ls -l $HOME/android-sdk/build-tools/*/aidl || true
+
+      - name: Ensure buildozer.spec available (copy from robot-trading if needed)
+        run: |
+          # if buildozer.spec exists in robot-trading folder but not in current working dir, copy to root so buildozer sees it
+          if [ -f robot-trading/buildozer.spec ] && [ ! -f buildozer.spec ]; then
+            cp robot-trading/buildozer.spec ./buildozer.spec
+            echo "Copied robot-trading/buildozer.spec -> ./buildozer.spec"
+          fi
+
+      - name: Build APK with Buildozer (in robot-trading folder)
+        working-directory: ./robot-trading
+        env:
+          ANDROID_HOME: ${{ env.ANDROID_HOME }}
+          ANDROID_SDK_ROOT: ${{ env.ANDROID_SDK_ROOT }}
+          ANDROID_NDK_HOME: ${{ env.ANDROID_NDK_HOME }}
+        run: |
+          set -euo pipefail
+          export PATH="$HOME/android-sdk/cmdline-tools/latest/bin:$HOME/android-sdk/platform-tools:$PATH"
+          echo "Building, show build-tools location used by buildozer:"
+          ls -la /home/runner/.buildozer/android/platform/android-sdk/build-tools || true
           buildozer -v android debug
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: trading-app-apk
-          path: robot-trading/bin/*.apk
+          name: robot-trading-apk
+          path: ./robot-trading/bin/*.apk
