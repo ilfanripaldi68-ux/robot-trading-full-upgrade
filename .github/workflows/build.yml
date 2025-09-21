@@ -37,29 +37,30 @@ jobs:
         run: |
           mkdir -p $HOME/android-sdk/cmdline-tools
           cd $HOME/android-sdk/cmdline-tools
-
-          # Download Android Command Line Tools
           curl -fo sdk.zip https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
-          unzip sdk.zip -d temp
+          unzip sdk.zip -d latest
           rm sdk.zip
-          mv temp/cmdline-tools latest
 
-          export ANDROID_HOME=$HOME/android-sdk
-          export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$PATH
-          export PATH=$ANDROID_HOME/platform-tools:$PATH
+          # Pindahkan isi folder agar sdkmanager ada di path benar
+          mv latest/cmdline-tools/* latest/ || true
+          rm -rf latest/cmdline-tools || true
 
-          # Accept licenses
+          export PATH=$HOME/android-sdk/cmdline-tools/latest/bin:$PATH
+          sdkmanager --version
+
           yes | sdkmanager --licenses
-
-          # Install spesifik versi, hindari 36.1
-          yes | sdkmanager --install "platform-tools" "platforms;android-33" "build-tools;33.0.2" "ndk;25.2.9519653"
-
-          # Debug cek AIDL biar gak error lagi
-          ls -la $ANDROID_HOME/build-tools/33.0.2/aidl || echo "AIDL not found!"
+          yes | sdkmanager "platform-tools" "platforms;android-33" "build-tools;33.0.2" "ndk;25.2.9519653"
 
       - name: Build APK
         working-directory: robot-trading
-        run: buildozer -v android debug
+        env:
+          ANDROID_HOME: $HOME/android-sdk
+          PATH: $HOME/android-sdk/cmdline-tools/latest/bin:$HOME/android-sdk/platform-tools:$PATH
+          USE_SDK_VERSION: "33.0.2"
+        run: |
+          echo "Force build-tools version: $USE_SDK_VERSION"
+          buildozer android clean
+          buildozer -v android debug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
