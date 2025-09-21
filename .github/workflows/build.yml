@@ -1,10 +1,10 @@
-name: Build Android APK
+name: Build APK
 
 on:
   push:
-    branches:
-      - main
+    branches: [ "main" ]
   pull_request:
+    branches: [ "main" ]
 
 jobs:
   build:
@@ -21,51 +21,23 @@ jobs:
 
       - name: Install dependencies
         run: |
-          sudo apt-get update
-          sudo apt-get install -y python3-pip python3-setuptools git zip unzip openjdk-17-jdk
+          sudo apt update
+          sudo apt install -y python3-pip git zip unzip openjdk-17-jdk \
+            libncurses6 libtinfo6 libffi-dev libssl-dev
           pip install --upgrade pip
-          pip install buildozer cython virtualenv
+          pip install buildozer cython
 
-      - name: Install Android SDK
-        run: |
-          mkdir -p $HOME/android-sdk/cmdline-tools
-          cd $HOME/android-sdk/cmdline-tools
-
-          # Download cmdline-tools
-          wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O tools.zip
-          unzip -q tools.zip
-          mv cmdline-tools $HOME/android-sdk/cmdline-tools/latest
-          rm -f tools.zip
-
-          export ANDROID_HOME=$HOME/android-sdk
-          export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH
-
-          # Accept licenses
-          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses
-
-          # Install platform tools & build-tools (tanpa backslash!)
-          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platform-tools" "platforms;android-33" "build-tools;33.0.2" "build-tools;36.1.0" "ndk;25.2.9519653"
-
-          echo "ANDROID_HOME=$HOME/android-sdk" >> $GITHUB_ENV
-          echo "ANDROID_SDK_ROOT=$HOME/android-sdk" >> $GITHUB_ENV
-          echo "ANDROID_NDK_HOME=$HOME/android-sdk/ndk/25.2.9519653" >> $GITHUB_ENV
-          echo "$HOME/android-sdk/cmdline-tools/latest/bin" >> $GITHUB_PATH
-          echo "$HOME/android-sdk/platform-tools" >> $GITHUB_PATH
-
-          # Link SDK ke buildozer
-          mkdir -p /home/runner/.buildozer/android/platform
-          rm -rf /home/runner/.buildozer/android/platform/android-sdk || true
-          ln -s $HOME/android-sdk /home/runner/.buildozer/android/platform/android-sdk
-
-          # Debug check
-          ls -l $ANDROID_HOME/build-tools || true
+      # 👉 Fix: copy buildozer.spec ke root
+      - name: Copy buildozer.spec
+        run: cp robot-trading/buildozer.spec ./buildozer.spec
 
       - name: Build APK with Buildozer
+        working-directory: ./robot-trading
         run: |
           buildozer -v android debug
 
-      - name: Upload APK Artifact
+      - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: robot-trading-apk
-          path: bin/*.apk
+          name: trading-app-apk
+          path: robot-trading/bin/*.apk
