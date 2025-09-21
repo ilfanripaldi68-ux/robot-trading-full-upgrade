@@ -1,4 +1,4 @@
-name: Build Android APK
+name: Build APK with Buildozer
 
 on:
   push:
@@ -12,36 +12,26 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: "3.10"
 
       - name: Install dependencies
         run: |
-          sudo apt update
-          sudo apt install -y build-essential git zip unzip openjdk-17-jdk python3-pip
-          pip install --upgrade pip
+          sudo apt-get update
+          sudo apt-get install -y zip unzip openjdk-17-jdk
+          python -m pip install --upgrade pip
           pip install buildozer cython
-
-      - name: Buildozer init (if not exist)
-        run: |
-          if [ ! -f buildozer.spec ]; then
-            buildozer init
-          fi
-
-      - name: Accept Android SDK Licenses
-        run: |
-          yes | $HOME/.buildozer/android/platform/android-sdk/cmdline-tools/latest/bin/sdkmanager --licenses
 
       - name: Build APK
         run: |
           buildozer -v android debug
 
       - name: Upload APK
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
-          name: app-debug.apk
+          name: app-debug
           path: bin/*.apk
