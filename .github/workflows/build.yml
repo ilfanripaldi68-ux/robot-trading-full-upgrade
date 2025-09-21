@@ -26,15 +26,31 @@ jobs:
             python3-pip python3-setuptools python3-wheel \
             libffi-dev libssl-dev libsqlite3-dev zlib1g-dev \
             pkg-config libgl1-mesa-dev libgles2-mesa-dev \
-            build-essential
+            build-essential curl
 
       - name: Install Buildozer
         run: |
           pip install --upgrade pip
           pip install buildozer cython virtualenv
 
-      - name: Accept Android SDK Licenses
-        run: yes | sdkmanager --licenses || true
+      - name: Setup Android SDK & Build-tools
+        run: |
+          mkdir -p $HOME/android-sdk/cmdline-tools
+          cd $HOME/android-sdk/cmdline-tools
+          curl -o sdk-tools.zip https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip
+          unzip sdk-tools.zip
+          mkdir -p latest
+          mv cmdline-tools/* latest/
+          rm -rf cmdline-tools
+
+          export ANDROID_SDK_ROOT=$HOME/android-sdk
+          export PATH=$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$ANDROID_SDK_ROOT/platform-tools:$PATH
+
+          # Terima semua license
+          yes | sdkmanager --licenses || true
+
+          # Install versi build-tools yang stabil
+          sdkmanager --install "platform-tools" "platforms;android-33" "build-tools;33.0.2"
 
       - name: Build APK
         working-directory: robot-trading
