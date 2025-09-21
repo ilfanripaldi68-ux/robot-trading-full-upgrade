@@ -41,11 +41,11 @@ jobs:
           unzip sdk.zip -d latest
           rm sdk.zip
 
-          # FIX: pindahkan isi folder supaya sdkmanager ada di path yang benar
-          mv latest/cmdline-tools/* latest/
-          rm -rf latest/cmdline-tools
+          # FIX: benerin struktur folder biar sdkmanager ada di path yang benar
+          mv latest/* .
+          rm -rf latest
 
-          export PATH=$HOME/android-sdk/cmdline-tools/latest/bin:$PATH
+          export PATH=$HOME/android-sdk/cmdline-tools/bin:$PATH
           sdkmanager --version
 
           yes | sdkmanager --licenses
