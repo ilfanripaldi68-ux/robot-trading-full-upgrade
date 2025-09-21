@@ -1,4 +1,11 @@
+# UI Framework
 kivy==2.3.1
+
+# Exchange API
 ccxt==4.5.5
+
+# Data handling
 pandas==2.3.2
+
+# Technical Analysis (pandas-ta dari branch develop)
 https://github.com/twopirllc/pandas-ta/archive/refs/heads/develop.zip
