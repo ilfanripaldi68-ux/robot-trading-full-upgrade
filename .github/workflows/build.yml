@@ -41,12 +41,21 @@ jobs:
             libssl-dev \
             liblzo2-dev \
             libsqlite3-dev \
-            zlib1g-dev
+            zlib1g-dev \
+            libncurses5 \
+            libtinfo5 \
+            libjpeg-dev \
+            libpng-dev \
+            autoconf \
+            cmake \
+            pkg-config
 
       - name: Build APK with Buildozer
         run: |
           cd robot-trading
-          buildozer init
+          if [ ! -f buildozer.spec ]; then
+            buildozer init
+          fi
           buildozer -v android debug
 
       - name: Upload APK artifact
