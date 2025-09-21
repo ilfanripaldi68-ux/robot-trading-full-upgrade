@@ -40,20 +40,23 @@ jobs:
           
           # Download Command Line Tools
           curl -fo sdk.zip https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
-          unzip sdk.zip -d tools
+          unzip sdk.zip -d temp
           rm sdk.zip
+          
+          # Pindahkan ke folder 'latest' sesuai standar
+          mv temp/cmdline-tools latest
 
           # Set env vars
           export ANDROID_HOME=$HOME/android-sdk
-          export PATH=$ANDROID_HOME/cmdline-tools/tools/bin:$PATH
+          export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$PATH
           export PATH=$ANDROID_HOME/platform-tools:$PATH
 
-          # Verify sdkmanager works
-          sdkmanager --version
+          # Tes sdkmanager
+          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --version
 
-          # Accept licenses & install required components
-          yes | sdkmanager --licenses
-          yes | sdkmanager "platform-tools" "platforms;android-33" "build-tools;33.0.2" "ndk;25.2.9519653"
+          # Accept licenses & install komponen wajib
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platform-tools" "platforms;android-33" "build-tools;33.0.2" "ndk;25.2.9519653"
 
       - name: Build APK
         working-directory: robot-trading
