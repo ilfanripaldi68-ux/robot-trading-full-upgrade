@@ -1,4 +1,4 @@
-name: Build APK
+name: Build Android APK
 
 on:
   push:
@@ -12,44 +12,50 @@ jobs:
 
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@v3
 
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: "3.10"
-
-    - name: Install dependencies
+    - name: Install system dependencies
       run: |
-        sudo apt update
-        sudo apt install -y python3-pip git zip unzip openjdk-17-jdk \
-          libncurses6 libtinfo6 libffi-dev libssl-dev
-        # backward compatibility symlink (fix .so.5 issue)
-        sudo ln -s /usr/lib/x86_64-linux-gnu/libncurses.so.6 /usr/lib/x86_64-linux-gnu/libncurses.so.5 || true
-        sudo ln -s /usr/lib/x86_64-linux-gnu/libtinfo.so.6 /usr/lib/x86_64-linux-gnu/libtinfo.so.5 || true
-        pip install --upgrade pip
-        pip install buildozer cython
+        sudo apt-get update
+        sudo apt-get install -y \
+          python3 python3-pip python3-setuptools git zip unzip openjdk-17-jdk \
+          libssl-dev libffi-dev build-essential autoconf automake libtool pkg-config \
+          zlib1g-dev cmake
 
-    - name: Accept Android SDK licenses
+    - name: Install Buildozer & Cython
+      run: |
+        pip install --upgrade pip
+        pip install buildozer cython virtualenv
+
+    - name: Setup Android SDK & accept licenses
       run: |
         mkdir -p $HOME/android-sdk/cmdline-tools
         cd $HOME/android-sdk/cmdline-tools
         curl -o sdk-tools.zip https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip
-        unzip sdk-tools.zip -d latest
-        yes | $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager --licenses || true
-
-    - name: Install Android SDK Build Tools
-      run: |
+        unzip sdk-tools.zip
+        # perbaiki struktur folder
+        mkdir -p latest
+        mv cmdline-tools/* latest/
+        rm -rf cmdline-tools
+        yes | $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager --licenses
         yes | $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager \
           "platform-tools" "platforms;android-33" "build-tools;33.0.2"
 
-    - name: Build APK with Buildozer
-      working-directory: ./robot-trading
+    - name: Ensure buildozer.spec exists
       run: |
+        if [ ! -f buildozer.spec ]; then
+          buildozer init
+        fi
+
+    - name: Build APK
+      run: |
+        export ANDROIDSDK="$HOME/android-sdk"
+        export ANDROIDNDK="$HOME/.buildozer/android/platform/android-ndk-r25b"
+        export PATH=$PATH:$ANDROIDSDK/cmdline-tools/latest/bin:$ANDROIDSDK/platform-tools
         buildozer -v android debug
 
     - name: Upload APK artifact
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v3
       with:
-        name: my-robot-trading-apk
-        path: ./robot-trading/bin/*.apk
+        name: android-apk
+        path: bin/*.apk
