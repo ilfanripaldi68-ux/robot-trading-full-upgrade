@@ -26,7 +26,7 @@ jobs:
             python3-pip python3-setuptools python3-wheel \
             libffi-dev libssl-dev libsqlite3-dev zlib1g-dev \
             pkg-config libgl1-mesa-dev libgles2-mesa-dev \
-            build-essential curl
+            build-essential
 
       - name: Install Buildozer
         run: |
@@ -41,18 +41,10 @@ jobs:
           unzip sdk.zip -d latest
           rm sdk.zip
           
-          # Set path ke sdkmanager
-          export PATH=$HOME/android-sdk/cmdline-tools/latest/bin:$PATH
-          
-          # Terima semua license
-          yes | sdkmanager --licenses
-          
-          # Install paket penting (wajib biar aidl ketemu)
-          yes | sdkmanager \
-            "platform-tools" \
-            "platforms;android-33" \
-            "build-tools;33.0.2" \
-            "ndk;25.2.9519653"
+          # Panggil sdkmanager pakai path absolut biar tidak error
+          SDKMANAGER=$HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager
+          yes | $SDKMANAGER --licenses
+          yes | $SDKMANAGER "platform-tools" "platforms;android-33" "build-tools;33.0.2" "ndk;25.2.9519653"
 
       - name: Build APK
         working-directory: robot-trading
