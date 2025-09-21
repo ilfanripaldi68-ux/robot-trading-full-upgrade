@@ -18,6 +18,17 @@ jobs:
         with:
           python-version: '3.10'
 
+      - name: Cache Buildozer
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.buildozer
+            ~/.gradle
+            ~/android-sdk
+          key: ${{ runner.os }}-buildozer-${{ hashFiles('**/buildozer.spec') }}
+          restore-keys: |
+            ${{ runner.os }}-buildozer-
+
       - name: Install dependencies
         run: |
           sudo apt-get update -y
@@ -38,17 +49,14 @@ jobs:
           mkdir -p $HOME/android-sdk/cmdline-tools
           cd $HOME/android-sdk/cmdline-tools
           curl -fo sdk.zip https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
-          unzip sdk.zip -d latest
+          unzip -q sdk.zip -d latest
           rm sdk.zip
 
-          # Pindahkan isi folder agar sdkmanager ada di path benar
-          mv latest/cmdline-tools/* latest/ || true
-          rm -rf latest/cmdline-tools || true
+          mv latest/cmdline-tools/* latest/
+          rm -rf latest/cmdline-tools
 
           export PATH=$HOME/android-sdk/cmdline-tools/latest/bin:$PATH
-          sdkmanager --version
-
-          yes | sdkmanager --licenses
+          yes | sdkmanager --licenses || true
           yes | sdkmanager "platform-tools" "platforms;android-33" "build-tools;33.0.2" "ndk;25.2.9519653"
 
       - name: Build APK
@@ -56,9 +64,15 @@ jobs:
         env:
           ANDROID_HOME: $HOME/android-sdk
           PATH: $HOME/android-sdk/cmdline-tools/latest/bin:$HOME/android-sdk/platform-tools:$PATH
-          USE_SDK_VERSION: "33.0.2"
         run: |
-          echo "Force build-tools version: $USE_SDK_VERSION"
+          echo "🚀 Starting Build..."
+
+          # FIX: pastikan python-for-android ada
+          if [ ! -d ".buildozer/android/platform/python-for-android" ]; then
+            echo "⚠️ python-for-android not found, cloning..."
+            git clone https://github.com/kivy/python-for-android.git .buildozer/android/platform/python-for-android
+          fi
+
           buildozer android clean
           buildozer -v android debug
 
