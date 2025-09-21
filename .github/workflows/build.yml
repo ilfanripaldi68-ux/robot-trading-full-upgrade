@@ -20,6 +20,7 @@ jobs:
 
       - name: Install dependencies
         run: |
+          echo "📦 Installing base dependencies..."
           sudo apt-get update -y
           sudo apt-get install -y \
             git zip unzip openjdk-17-jdk \
@@ -30,39 +31,51 @@ jobs:
 
       - name: Install Buildozer
         run: |
+          echo "📦 Installing Buildozer..."
           pip install --upgrade pip
           pip install buildozer cython virtualenv
 
       - name: Install Android SDK & Accept Licenses
         run: |
+          echo "📥 Downloading Android command-line tools..."
           mkdir -p $HOME/android-sdk/cmdline-tools
           cd $HOME/android-sdk/cmdline-tools
           curl -fo sdk.zip https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
-          unzip sdk.zip -d latest
+          unzip -q sdk.zip -d latest
           rm sdk.zip
 
-          # ✅ FIX: pindahkan isi folder biar sdkmanager ada di latest/bin
-          mv latest/cmdline-tools/* latest/
-          rm -rf latest/cmdline-tools
+          # fix path supaya sdkmanager bisa jalan
+          mv latest/cmdline-tools/* latest/ || true
+          rm -rf latest/cmdline-tools || true
 
-          # Tambahkan PATH permanen
-          echo "$HOME/android-sdk/cmdline-tools/latest/bin" >> $GITHUB_PATH
-          echo "$HOME/android-sdk/platform-tools" >> $GITHUB_PATH
+          export ANDROID_HOME=$HOME/android-sdk
+          export ANDROID_SDK_ROOT=$HOME/android-sdk
+          export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH
 
-      - name: Verify sdkmanager
-        run: |
-          echo "✅ Cek sdkmanager..."
-          ls -lah $HOME/android-sdk/cmdline-tools/latest/bin
+          echo "✅ sdkmanager version:"
           sdkmanager --version
 
+          echo "📥 Installing SDK packages..."
           yes | sdkmanager --licenses
           yes | sdkmanager "platform-tools" "platforms;android-33" "build-tools;33.0.2" "ndk;25.2.9519653"
 
+      - name: Force Build-Tools 33.0.2
+        run: |
+          echo "⚠️ Forcing Build-Tools 33.0.2 to replace 36.1.0 if requested..."
+          mkdir -p $HOME/android-sdk/build-tools/33.0.2
+          ln -sf $HOME/android-sdk/build-tools/33.0.2 $HOME/android-sdk/build-tools/36.1.0
+          echo "📂 Current build-tools:"
+          ls -lah $HOME/android-sdk/build-tools
+
       - name: Build APK
         working-directory: robot-trading
-        run: buildozer -v android debug
+        run: |
+          echo "🚀 Starting Buildozer..."
+          set -e
+          buildozer -v android debug || (echo "❌ Build failed. Dumping .buildozer logs..." && ls -R .buildozer && exit 1)
 
       - name: Upload APK
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: robot-trading-apk
