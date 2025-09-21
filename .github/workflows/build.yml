@@ -1,63 +1,48 @@
-  name: Install Android cmdline-tools, accept licenses, install build-tools & NDK (robust)
-  run: |
-    set -euo pipefail
+name: Build Android APK
 
-    ANDROID_HOME="$HOME/android-sdk"
-    SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+on:
+  push:
+    branches:
+      - main
+  pull_request:
 
-    mkdir -p "$ANDROID_HOME/cmdline-tools"
-    cd "$HOME"
+jobs:
+  build:
+    runs-on: ubuntu-latest
 
-    # download and extract commandline tools only if not already present
-    if [ ! -x "$SDKMANAGER" ]; then
-      TMP=$(mktemp -d)
-      cd "$TMP"
-      wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O tools.zip
-      unzip -q tools.zip
-      # find sdkmanager path inside the extracted tree and move to $ANDROID_HOME/cmdline-tools/latest
-      FOUND=$(find . -type f -name sdkmanager -print -quit || true)
-      if [ -z "$FOUND" ]; then
-        echo "ERROR: sdkmanager not found inside downloaded archive"
-        ls -R .
-        exit 1
-      fi
-      # move the parent cmdline-tools dir to the final location
-      PARENT_DIR=$(dirname "$(dirname "$FOUND")")
-      mkdir -p "$ANDROID_HOME/cmdline-tools"
-      rm -rf "$ANDROID_HOME/cmdline-tools/latest" || true
-      mv "$PARENT_DIR" "$ANDROID_HOME/cmdline-tools/latest"
-      cd "$HOME"
-      rm -rf "$TMP"
-    else
-      echo "sdkmanager already present at $SDKMANAGER"
-    fi
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-    # ensure PATH for this step (and we export later for subsequent steps)
-    export PATH="$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH"
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
 
-    echo ">>> sdkmanager path: $(which sdkmanager 2>/dev/null || echo not-in-path)"
-    echo ">>> sdkmanager file exists:" && ls -l "$SDKMANAGER" || true
+      - name: Install dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y python3-pip git zip unzip openjdk-17-jdk \
+            libncurses5 libtinfo5 libffi-dev libssl-dev
+          pip install --upgrade pip
+          pip install buildozer cython
 
-    # Accept licenses (sdkmanager will exit when done; yes could get SIGPIPE — ignore nonzero with || true)
-    yes | "$SDKMANAGER" --licenses >/dev/null 2>&1 || true
+      - name: Install Android SDK
+        run: |
+          mkdir -p $HOME/android-sdk/cmdline-tools
+          cd $HOME/android-sdk/cmdline-tools
+          curl -fo sdk-tools.zip https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
+          unzip -q sdk-tools.zip -d latest
+          rm sdk-tools.zip
+          yes | $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager --licenses
+          $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager --install "platform-tools" "platforms;android-34" "build-tools;34.0.0"
 
-    # Install platform-tools, platform and build-tools + ndk (ignore non-zero but print output)
-    "$SDKMANAGER" "platform-tools" "platforms;android-33" "build-tools;33.0.2" "build-tools;36.1.0" "ndk;25.2.9519653" || true
+      - name: Build APK with Buildozer
+        working-directory: ./robot-trading
+        run: buildozer -v android debug
 
-    # expose to following steps
-    echo "ANDROID_HOME=$ANDROID_HOME" >> $GITHUB_ENV
-    echo "ANDROID_SDK_ROOT=$ANDROID_HOME" >> $GITHUB_ENV
-    echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/25.2.9519653" >> $GITHUB_ENV
-    echo "$ANDROID_HOME/cmdline-tools/latest/bin" >> $GITHUB_PATH
-    echo "$ANDROID_HOME/platform-tools" >> $GITHUB_PATH
-
-    # Make Buildozer see our SDK location (symlink to where Buildozer expects)
-    mkdir -p /home/runner/.buildozer/android/platform
-    rm -rf /home/runner/.buildozer/android/platform/android-sdk || true
-    ln -s "$ANDROID_HOME" /home/runner/.buildozer/android/platform/android-sdk
-
-    # sanity checks
-    echo "---- build-tools dir listing ----"
-    ls -la "$ANDROID_HOME/build-tools" || true
-    echo "---- check for aidl ----"
-    ls -la "$ANDROID_HOME/build-tools"/*/aidl || true
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: my-app-apk
+          path: ./robot-trading/bin/*.apk
