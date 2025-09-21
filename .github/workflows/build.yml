@@ -32,27 +32,31 @@ jobs:
         mkdir -p $HOME/android-sdk/cmdline-tools
         cd $HOME/android-sdk/cmdline-tools
         wget https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O tools.zip
-        unzip tools.zip -d cmdline-tools
-        mv cmdline-tools $HOME/android-sdk/cmdline-tools/latest
+        unzip tools.zip
+        mv cmdline-tools latest   # FIX struktur folder
         rm tools.zip
         echo "ANDROID_HOME=$HOME/android-sdk" >> $GITHUB_ENV
-        echo "PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH" >> $GITHUB_ENV
+        echo "PATH=$HOME/android-sdk/cmdline-tools/latest/bin:$HOME/android-sdk/platform-tools:$PATH" >> $GITHUB_ENV
 
-    - name: Accept Android SDK licenses
+    - name: Verify sdkmanager
       run: |
-        yes | $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager --licenses
+        ls -R $HOME/android-sdk/cmdline-tools/latest
+        $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager --version
 
-    - name: Install required SDK packages
+    - name: Accept Android licenses
+      run: yes | $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager --licenses
+
+    - name: Install Build Tools & Platform
       run: |
-        $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager "platform-tools" "platforms;android-33" "build-tools;33.0.2"
+        yes | $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager \
+          "platform-tools" "platforms;android-34" "build-tools;34.0.0"
 
     - name: Build APK with Buildozer
       working-directory: ./robot-trading
-      run: |
-        buildozer -v android debug
+      run: buildozer -v android debug
 
-    - name: Upload APK artifact
+    - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
-        name: my-app
+        name: robot-trading-apk
         path: ./robot-trading/bin/*.apk
