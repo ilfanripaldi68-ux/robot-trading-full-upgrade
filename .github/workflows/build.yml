@@ -21,7 +21,7 @@ jobs:
       - name: Install Python dependencies
         run: |
           pip install --upgrade pip
-          pip install buildozer cython virtualenv
+          pip install buildozer cython virtualenv gitpython
 
       - name: Install Android SDK
         run: |
@@ -48,10 +48,14 @@ jobs:
         run: |
           echo "🚀 Starting Build..."
 
-          # pastikan python-for-android ada
+          # clone python-for-android pakai gitpython (tanpa git binary)
           if [ ! -d ".buildozer/android/platform/python-for-android" ]; then
             echo "⚠️ python-for-android not found, cloning..."
-            git clone https://github.com/kivy/python-for-android.git .buildozer/android/platform/python-for-android
+            python - <<EOF
+import git
+repo_url = "https://github.com/kivy/python-for-android.git"
+git.Repo.clone_from(repo_url, ".buildozer/android/platform/python-for-android")
+EOF
           fi
 
           buildozer -v android debug
