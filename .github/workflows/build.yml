@@ -1,4 +1,4 @@
-name: Build Android APK
+name: Build APK
 
 on:
   push:
@@ -11,20 +11,23 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    # Checkout repository
-    - name: Checkout repo
+    - name: Checkout repository
       uses: actions/checkout@v4
 
-    # Install dependencies
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.10"
+
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y python3-pip zip unzip openjdk-17-jdk
+        sudo apt-get install -y python3-pip git zip unzip openjdk-17-jdk \
+          libncurses6 libtinfo6 libffi-dev libssl-dev
         pip install --upgrade pip
         pip install buildozer cython
 
-    # Setup Android SDK & accept licenses
-    - name: Setup Android SDK
+    - name: Install Android SDK & accept licenses
       run: |
         mkdir -p $HOME/android-sdk/cmdline-tools
         cd $HOME/android-sdk/cmdline-tools
@@ -37,17 +40,21 @@ jobs:
         yes | $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager \
           "platform-tools" "platforms;android-33" "build-tools;33.0.2"
 
-    # Build APK
-    - name: Build APK
-      working-directory: robot-trading
+    - name: Ensure buildozer.spec exists
       run: |
-        export ANDROIDSDK="$HOME/android-sdk"
-        export ANDROIDNDK="$HOME/.buildozer/android/platform/android-ndk-r25b"
+        cd robot-trading
+        if [ ! -f buildozer.spec ]; then
+          buildozer init
+        fi
+
+    - name: Build APK with Buildozer
+      working-directory: ./robot-trading
+      run: |
+        export ANDROIDSDK=$HOME/android-sdk
         export PATH=$PATH:$ANDROIDSDK/cmdline-tools/latest/bin:$ANDROIDSDK/platform-tools
         buildozer -v android debug
 
-    # Upload APK as artifact
-    - name: Upload APK
+    - name: Upload APK artifact
       uses: actions/upload-artifact@v4
       with:
         name: android-apk
