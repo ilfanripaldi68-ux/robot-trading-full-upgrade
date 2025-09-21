@@ -37,26 +37,25 @@ jobs:
         run: |
           mkdir -p $HOME/android-sdk/cmdline-tools
           cd $HOME/android-sdk/cmdline-tools
-          
-          # Download Command Line Tools
+
+          # Download Android Command Line Tools
           curl -fo sdk.zip https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
           unzip sdk.zip -d temp
           rm sdk.zip
-          
-          # Pindahkan ke folder 'latest' sesuai standar
           mv temp/cmdline-tools latest
 
-          # Set env vars
           export ANDROID_HOME=$HOME/android-sdk
           export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$PATH
           export PATH=$ANDROID_HOME/platform-tools:$PATH
 
-          # Tes sdkmanager
-          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --version
+          # Accept licenses
+          yes | sdkmanager --licenses
 
-          # Accept licenses & install komponen wajib
-          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses
-          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platform-tools" "platforms;android-33" "build-tools;33.0.2" "ndk;25.2.9519653"
+          # Install spesifik versi, hindari 36.1
+          yes | sdkmanager --install "platform-tools" "platforms;android-33" "build-tools;33.0.2" "ndk;25.2.9519653"
+
+          # Debug cek AIDL biar gak error lagi
+          ls -la $ANDROID_HOME/build-tools/33.0.2/aidl || echo "AIDL not found!"
 
       - name: Build APK
         working-directory: robot-trading
