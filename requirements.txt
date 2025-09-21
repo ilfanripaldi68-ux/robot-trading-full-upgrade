@@ -1,4 +1,11 @@
-kivy
-ccxt
-pandas
-https://github.com/twopirllc/pandas-ta/archive/refs/heads/master.zip
+# UI Framework
+kivy==2.3.1
+
+# Exchange API
+ccxt==4.5.5
+
+# Data handling
+pandas==2.3.2
+
+# Technical Analysis (langsung ambil dari GitHub karena tidak ada di PyPI)
+https://github.com/twopirllc/pandas-ta/archive/refs/heads/main.zip
