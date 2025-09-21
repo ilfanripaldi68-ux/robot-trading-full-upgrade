@@ -11,50 +11,37 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4   # update juga ke v4
+      - name: Checkout repo
+        uses: actions/checkout@v4
 
-    - name: Install system dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y \
-          python3 python3-pip python3-setuptools git zip unzip openjdk-17-jdk \
-          libssl-dev libffi-dev build-essential autoconf automake libtool pkg-config \
-          zlib1g-dev cmake
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y python3-pip zip unzip openjdk-17-jdk
+          pip install --upgrade pip
+          pip install buildozer cython
 
-    - name: Install Buildozer & Cython
-      run: |
-        pip install --upgrade pip
-        pip install buildozer cython virtualenv
+      - name: Setup Android SDK & accept licenses
+        run: |
+          mkdir -p $HOME/android-sdk/cmdline-tools
+          cd $HOME/android-sdk/cmdline-tools
+          curl -o sdk-tools.zip https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip
+          unzip sdk-tools.zip
+          mkdir -p latest
+          mv cmdline-tools/* latest/
+          rm -rf cmdline-tools
+          yes | $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager --licenses
+          yes | $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager \
+            "platform-tools" "platforms;android-33" "build-tools;33.0.2"
 
-    - name: Setup Android SDK & accept licenses
-      run: |
-        mkdir -p $HOME/android-sdk/cmdline-tools
-        cd $HOME/android-sdk/cmdline-tools
-        curl -o sdk-tools.zip https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip
-        unzip sdk-tools.zip
-        mkdir -p latest
-        mv cmdline-tools/* latest/
-        rm -rf cmdline-tools
-        yes | $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager --licenses
-        yes | $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager \
-          "platform-tools" "platforms;android-33" "build-tools;33.0.2"
+      - name: Build APK
+        run: |
+          buildozer -v android debug
+          mkdir -p dist
+          cp bin/*.apk dist/trading-bot.apk
 
-    - name: Ensure buildozer.spec exists
-      run: |
-        if [ ! -f buildozer.spec ]; then
-          buildozer init
-        fi
-
-    - name: Build APK
-      run: |
-        export ANDROIDSDK="$HOME/android-sdk"
-        export ANDROIDNDK="$HOME/.buildozer/android/platform/android-ndk-r25b"
-        export PATH=$PATH:$ANDROIDSDK/cmdline-tools/latest/bin:$ANDROIDSDK/platform-tools
-        buildozer -v android debug
-
-    - name: Upload APK artifact
-      uses: actions/upload-artifact@v4   # FIX: pakai v4
-      with:
-        name: android-apk
-        path: bin/*.apk
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: trading-bot
+          path: dist/trading-bot.apk
