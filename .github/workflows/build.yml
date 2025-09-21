@@ -37,17 +37,21 @@ jobs:
         run: |
           mkdir -p $HOME/android-sdk/cmdline-tools
           cd $HOME/android-sdk/cmdline-tools
+          
+          # Download Command Line Tools
           curl -fo sdk.zip https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
-          unzip sdk.zip -d latest
+          unzip sdk.zip -d tools
           rm sdk.zip
 
-          # FIX: benerin struktur folder biar sdkmanager ada di path yang benar
-          mv latest/* .
-          rm -rf latest
+          # Set env vars
+          export ANDROID_HOME=$HOME/android-sdk
+          export PATH=$ANDROID_HOME/cmdline-tools/tools/bin:$PATH
+          export PATH=$ANDROID_HOME/platform-tools:$PATH
 
-          export PATH=$HOME/android-sdk/cmdline-tools/bin:$PATH
+          # Verify sdkmanager works
           sdkmanager --version
 
+          # Accept licenses & install required components
           yes | sdkmanager --licenses
           yes | sdkmanager "platform-tools" "platforms;android-33" "build-tools;33.0.2" "ndk;25.2.9519653"
 
