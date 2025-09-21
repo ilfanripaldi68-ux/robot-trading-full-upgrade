@@ -1,95 +1,71 @@
-name: Build Android APK (fixed aidl)
+name: Build Android APK
 
 on:
   push:
-    branches: [ "main" ]
-  workflow_dispatch:
+    branches:
+      - main
+  pull_request:
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout repo
-      uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: "3.10"
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
 
-    - name: Install system dependencies & Buildozer
-      run: |
-        sudo apt update
-        sudo apt install -y python3-pip git zip unzip wget openjdk-17-jdk
-        python -m pip install --upgrade pip
-        pip install buildozer cython
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y python3-pip python3-setuptools git zip unzip openjdk-17-jdk
+          pip install --upgrade pip
+          pip install buildozer cython virtualenv
 
-    - name: Install Android SDK cmdline-tools, platform-tools, build-tools, NDK
-      run: |
-        # prepare directory
-        mkdir -p $HOME/android-sdk/cmdline-tools
-        cd $HOME/android-sdk/cmdline-tools
+      - name: Install Android SDK
+        run: |
+          mkdir -p $HOME/android-sdk/cmdline-tools
+          cd $HOME/android-sdk/cmdline-tools
 
-        # download and extract commandline tools, put inside cmdline-tools/latest
-        wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O tools.zip
-        unzip -q tools.zip
-        # After unzip we have cmdline-tools/ ; move it to latest
-        mv cmdline-tools $HOME/android-sdk/cmdline-tools/latest
-        rm -f tools.zip
+          # Download cmdline-tools
+          wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O tools.zip
+          unzip -q tools.zip
+          mv cmdline-tools $HOME/android-sdk/cmdline-tools/latest
+          rm -f tools.zip
 
-        # set env for this step
-        export ANDROID_HOME=$HOME/android-sdk
-        export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH
+          export ANDROID_HOME=$HOME/android-sdk
+          export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH
 
-        # accept licenses (force)
-        yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses
+          # Accept licenses
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses
 
-        # install platform-tools, platforms and build-tools + an NDK
-        yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager \
-          "platform-tools" \
-          "platforms;android-33" \
-          "build-tools;33.0.2" \
-          "build-tools;36.1.0" \
-          "ndk;25.2.9519653"
+          # Install platform tools & build-tools (tanpa backslash!)
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platform-tools" "platforms;android-33" "build-tools;33.0.2" "build-tools;36.1.0" "ndk;25.2.9519653"
 
-        # expose env to subsequent steps
-        echo "ANDROID_HOME=$HOME/android-sdk" >> $GITHUB_ENV
-        echo "ANDROID_SDK_ROOT=$HOME/android-sdk" >> $GITHUB_ENV
-        echo "ANDROID_NDK_HOME=$HOME/android-sdk/ndk/25.2.9519653" >> $GITHUB_ENV
-        echo "$HOME/android-sdk/cmdline-tools/latest/bin" >> $GITHUB_PATH
-        echo "$HOME/android-sdk/platform-tools" >> $GITHUB_PATH
+          echo "ANDROID_HOME=$HOME/android-sdk" >> $GITHUB_ENV
+          echo "ANDROID_SDK_ROOT=$HOME/android-sdk" >> $GITHUB_ENV
+          echo "ANDROID_NDK_HOME=$HOME/android-sdk/ndk/25.2.9519653" >> $GITHUB_ENV
+          echo "$HOME/android-sdk/cmdline-tools/latest/bin" >> $GITHUB_PATH
+          echo "$HOME/android-sdk/platform-tools" >> $GITHUB_PATH
 
-        # make sure Buildozer will find the exact SDK path it expects:
-        mkdir -p /home/runner/.buildozer/android/platform
-        # remove existing broken symlink if any, then create symlink pointing to our android-sdk
-        rm -rf /home/runner/.buildozer/android/platform/android-sdk || true
-        ln -s $HOME/android-sdk /home/runner/.buildozer/android/platform/android-sdk
+          # Link SDK ke buildozer
+          mkdir -p /home/runner/.buildozer/android/platform
+          rm -rf /home/runner/.buildozer/android/platform/android-sdk || true
+          ln -s $HOME/android-sdk /home/runner/.buildozer/android/platform/android-sdk
 
-        # sanity check
-        echo ">>> sdkmanager path:"
-        ls -l $ANDROID_HOME/cmdline-tools/latest/bin || true
-        echo ">>> build-tools installed:"
-        ls -l $ANDROID_HOME/build-tools || true
+          # Debug check
+          ls -l $ANDROID_HOME/build-tools || true
 
-    - name: Debug: list buildozer expected folder
-      run: |
-        echo "ls -R ~/.buildozer/android/platform/android-sdk:"
-        ls -R /home/runner/.buildozer/android/platform/android-sdk || true
+      - name: Build APK with Buildozer
+        run: |
+          buildozer -v android debug
 
-    - name: Build APK with Buildozer (run in robot-trading)
-      working-directory: ./robot-trading
-      run: |
-        export ANDROID_HOME=$HOME/android-sdk
-        export ANDROID_SDK_ROOT=$HOME/android-sdk
-        export ANDROID_NDK_HOME=$HOME/android-sdk/ndk/25.2.9519653
-        export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH
-        # optional: show versions
-        $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --list
-        buildozer -v android debug
-
-    - name: Upload APK artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: robot-trading-apk
-        path: ./robot-trading/bin/*.apk
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: robot-trading-apk
+          path: bin/*.apk
