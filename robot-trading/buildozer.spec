@@ -20,7 +20,7 @@ android.ndk_path = /home/runner/android-sdk/ndk/25.2.9519653
 # API settings
 android.api = 33
 android.minapi = 21
-android.ndk = 25c
+android.ndk = 25b
 android.ndk_api = 21
 
 # FIX error build-tools & license
