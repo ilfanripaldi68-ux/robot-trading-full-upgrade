@@ -40,10 +40,15 @@ jobs:
           curl -fo sdk.zip https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
           unzip sdk.zip -d latest
           rm sdk.zip
-          yes | $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager --licenses
           
-          # Install platform-tools + build-tools versi yang dipakai di buildozer.spec
-          yes | $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager \
+          # Set path ke sdkmanager
+          export PATH=$HOME/android-sdk/cmdline-tools/latest/bin:$PATH
+          
+          # Terima semua license
+          yes | sdkmanager --licenses
+          
+          # Install paket penting (wajib biar aidl ketemu)
+          yes | sdkmanager \
             "platform-tools" \
             "platforms;android-33" \
             "build-tools;33.0.2" \
