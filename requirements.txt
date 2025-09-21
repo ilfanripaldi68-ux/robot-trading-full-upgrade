@@ -1,4 +1,16 @@
+# UI & build
 kivy==2.3.1
+
+# Exchange API
 ccxt==4.5.5
+
+# Data handling
 pandas==2.3.2
-pandas-ta==0.3.14b0
+numpy>=1.23
+requests
+beautifulsoup4
+plyer
+
+# plotting (for charts)
+matplotlib
+mplfinance
