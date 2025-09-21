@@ -42,8 +42,8 @@ jobs:
             liblzo2-dev \
             libsqlite3-dev \
             zlib1g-dev \
-            libncurses5 \
-            libtinfo5 \
+            libncurses6 \
+            libtinfo6 \
             libjpeg-dev \
             libpng-dev \
             autoconf \
