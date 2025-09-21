@@ -1,4 +1,4 @@
-- name: Install Android cmdline-tools, accept licenses, install build-tools & NDK (robust)
+  name: Install Android cmdline-tools, accept licenses, install build-tools & NDK (robust)
   run: |
     set -euo pipefail
 
