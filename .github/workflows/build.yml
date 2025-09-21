@@ -24,18 +24,23 @@ jobs:
           sudo apt-get install -y \
             git zip unzip openjdk-17-jdk \
             python3-pip python3-setuptools python3-wheel \
-            libffi-dev libssl-dev \
-            adb wget curl
+            libffi-dev libssl-dev wget curl
 
       - name: Install Buildozer & Cython
         run: |
           pip install --upgrade pip
           pip install cython buildozer
 
-      - name: Accept Android SDK licenses
+      - name: Install Android SDK
         run: |
-          yes | sdkmanager --licenses || true
-          yes | sdkmanager "platform-tools" "platforms;android-33" "build-tools;33.0.2"
+          mkdir -p $HOME/android-sdk
+          cd $HOME/android-sdk
+          wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip
+          unzip commandlinetools-linux-9477386_latest.zip -d cmdline-tools
+          export ANDROID_HOME=$HOME/android-sdk
+          export PATH=$ANDROID_HOME/cmdline-tools/bin:$ANDROID_HOME/platform-tools:$PATH
+          yes | $ANDROID_HOME/cmdline-tools/bin/sdkmanager --licenses
+          yes | $ANDROID_HOME/cmdline-tools/bin/sdkmanager "platform-tools" "platforms;android-33" "build-tools;33.0.2"
 
       - name: Build APK
         run: |
