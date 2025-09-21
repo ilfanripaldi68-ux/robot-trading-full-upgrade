@@ -42,8 +42,12 @@ jobs:
             libsqlite3-dev \
             zlib1g-dev
 
+      - name: Accept Android SDK licenses
+        run: |
+          yes | sudo sdkmanager --licenses || true
+
       - name: Build APK with Buildozer
-        working-directory: ./robot-trading   # <-- pindah ke folder yang ada buildozer.spec
+        working-directory: ./robot-trading
         run: buildozer -v android debug
 
       - name: Upload APK artifact
