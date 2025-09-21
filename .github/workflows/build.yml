@@ -36,9 +36,26 @@ jobs:
         mv cmdline-tools latest
         rm tools.zip
 
-        yes | $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager --licenses
-        yes | $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager \
+        export ANDROID_HOME=$HOME/android-sdk
+        export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH
+
+        yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses
+        yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager \
           "platform-tools" \
           "platforms;android-34" \
           "build-tools;34.0.0" \
-          "build-tools;3
+          "build-tools;36.1.0" \
+          "ndk;25.2.9519653"
+
+    - name: Build APK with Buildozer
+      working-directory: ./robot-trading
+      run: |
+        export ANDROID_HOME=$HOME/android-sdk
+        export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH
+        buildozer -v android debug
+
+    - name: Upload APK artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: robot-trading-apk
+        path: ./robot-trading/bin/*.apk
