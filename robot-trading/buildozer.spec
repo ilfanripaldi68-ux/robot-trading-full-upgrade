@@ -1,33 +1,38 @@
-name: Build APK
+[app]
+# Nama aplikasi
+title = Robot Trading
 
-on:
-  push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
+# Nama package (tanpa spasi, huruf kecil semua)
+package.name = robottrading
 
-jobs:
-  build:
-    runs-on: ubuntu-latest
+# Domain package (bebas, bisa pakai org.example)
+package.domain = org.example
 
-    steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
+# Folder source code
+source.dir = .
 
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: "3.10"
+# File yang di-include
+source.include_exts = py,png,jpg,kv,atlas
 
-    - name: Install dependencies
-      run: |
-        sudo apt update
-        sudo apt install -y python3-pip git zip unzip openjdk-17-jdk \
-          libncurses6 libtinfo6 libffi-dev libssl-dev
-        pip install --upgrade pip
-        pip install buildozer cython
+# Versi aplikasi
+version = 0.1
 
-    - name: Build APK with Buildozer
-      working-directory: ./robot-trading
-      run: |
-        buildozer -v and
+# Requirements (wajib python3 + kivy, bisa ditambah sesuai kebutuhan)
+requirements = python3,kivy
+
+# Orientasi layar
+orientation = portrait
+
+# 0 = tidak fullscreen, 1 = fullscreen
+fullscreen = 0
+
+
+[buildozer]
+# Level log
+log_level = 2
+
+# Jangan build sebagai root
+warn_on_root = 1
+
+# Platform target
+target = android
