@@ -1,0 +1,11 @@
+kivy
+ccxt
+pandas
+pandas-ta
+matplotlib
+mplfinance
+kivy-garden
+kivy-garden.matplotlib
+requests
+beautifulsoup4
+plyer
