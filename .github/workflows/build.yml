@@ -1,52 +1,49 @@
-name: Build Android APK
+name: Build APK
 
 on:
-  workflow_dispatch:
   push:
-    branches:
-      - main
+    branches: [ main ]
+  pull_request:
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - name: Checkout Repo
+        uses: actions/checkout@v3
 
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v4
         with:
           python-version: "3.10"
 
       - name: Install dependencies
         run: |
           sudo apt update
-          sudo apt install -y python3-pip zip unzip openjdk-17-jdk
-          pip install buildozer cython virtualenv
+          sudo apt install -y python3-pip zip unzip openjdk-17-jdk git
+          pip install --upgrade pip
+          pip install buildozer cython
 
-      - name: Setup Android SDK & NDK
+      - name: Setup Android SDK
         run: |
-          mkdir -p $HOME/android-sdk
-          cd $HOME/android-sdk
-          wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O cmdline-tools.zip
-          unzip cmdline-tools.zip
-          mkdir -p cmdline-tools/latest
-          mv cmdline-tools/* cmdline-tools/latest/ || true
+          mkdir -p $HOME/android-sdk/cmdline-tools
+          cd $HOME/android-sdk/cmdline-tools
+          curl -o sdk-tools.zip https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip
+          unzip sdk-tools.zip -d latest
+          rm sdk-tools.zip
           yes | $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager --licenses
-          yes | $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager \
-            "platform-tools" \
-            "platforms;android-33" \
-            "build-tools;33.0.2" \
-            "ndk;25.1.8937393"
+          $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager "platforms;android-33" "build-tools;33.0.2" "ndk;25.2.9519653"
+
+      - name: Copy buildozer.spec
+        run: cp buildozer.spec robot-trading/
 
       - name: Build APK
         working-directory: robot-trading
-        run: |
-          buildozer -v --spec ../buildozer.spec android debug
+        run: buildozer -v android debug
 
-      - name: Upload APK
+      - name: Upload artifact (APK)
         uses: actions/upload-artifact@v4
         with:
-          name: RobotTrading-APK
+          name: app-release
           path: robot-trading/bin/*.apk
