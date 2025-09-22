@@ -1,49 +1,57 @@
-name: Build APK
+name: Android Build
 
 on:
   push:
-    branches: [ main ]
+    branches: [ "main" ]
   pull_request:
+    branches: [ "main" ]
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Repo
+      - name: 🚀 Checkout repository
         uses: actions/checkout@v3
 
-      - name: Setup Python
+      - name: 🛠️ Setup Python
         uses: actions/setup-python@v4
         with:
           python-version: "3.10"
 
-      - name: Install dependencies
+      - name: 📦 Install dependencies
         run: |
-          sudo apt update
-          sudo apt install -y python3-pip zip unzip openjdk-17-jdk git
-          pip install --upgrade pip
+          python -m pip install --upgrade pip
           pip install buildozer cython
 
-      - name: Setup Android SDK
+      - name: 📂 Setup Android SDK & NDK
         run: |
-          mkdir -p $HOME/android-sdk/cmdline-tools
-          cd $HOME/android-sdk/cmdline-tools
+          export ANDROID_HOME=$HOME/android-sdk
+          mkdir -p $ANDROID_HOME/cmdline-tools
+          cd $ANDROID_HOME/cmdline-tools
+
+          # Download Android command line tools
           curl -o sdk-tools.zip https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip
-          unzip sdk-tools.zip -d latest
+          unzip sdk-tools.zip -d tmp
           rm sdk-tools.zip
-          yes | $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager --licenses
-          $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager "platforms;android-33" "build-tools;33.0.2" "ndk;25.2.9519653"
 
-      - name: Copy buildozer.spec
-        run: cp buildozer.spec robot-trading/
+          # ✅ Fix path (rename jadi latest)
+          mv tmp/cmdline-tools $ANDROID_HOME/cmdline-tools/latest
+          rm -rf tmp
 
-      - name: Build APK
-        working-directory: robot-trading
-        run: buildozer -v android debug
+          echo "ANDROID_HOME=$ANDROID_HOME" >> $GITHUB_ENV
+          echo "$ANDROID_HOME/cmdline-tools/latest/bin" >> $GITHUB_PATH
+          echo "$ANDROID_HOME/platform-tools" >> $GITHUB_PATH
 
-      - name: Upload artifact (APK)
-        uses: actions/upload-artifact@v4
-        with:
-          name: app-release
-          path: robot-trading/bin/*.apk
+          # Accept all licenses
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses
+
+          # Install SDK, Build-tools & NDK
+          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager \
+            "platforms;android-33" \
+            "build-tools;33.0.2" \
+            "ndk;25.2.9519653"
+
+      - name: ⚙️ Build with Buildozer
+        run: |
+          buildozer -v android debug
