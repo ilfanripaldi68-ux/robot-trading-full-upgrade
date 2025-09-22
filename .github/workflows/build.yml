@@ -1,28 +1,37 @@
-name: Android Build
+name: Build Android APK
 
 on:
   push:
     branches:
       - main
-  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v3
+      - name: Checkout Repository
+        uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: '3.10'
 
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip
-          pip install buildozer cython
+          sudo apt-get update -y
+          sudo apt-get install -y \
+            git zip unzip openjdk-17-jdk \
+            python3-pip python3-setuptools python3-wheel \
+            libffi-dev libssl-dev libsqlite3-dev zlib1g-dev \
+            pkg-config libgl1-mesa-dev libgles2-mesa-dev \
+            build-essential
+
+      - name: Install Buildozer
+        run: |
+          pip install --upgrade pip
+          pip install buildozer cython virtualenv
 
       - name: Install Android SDK & Accept Licenses
         run: |
@@ -32,38 +41,28 @@ jobs:
           unzip sdk.zip -d latest
           rm sdk.zip
 
-          # perbaiki path sdkmanager
+          # Perbaiki path sdkmanager
           mv latest/cmdline-tools/* latest/
           rm -rf latest/cmdline-tools
 
           export PATH=$HOME/android-sdk/cmdline-tools/latest/bin:$PATH
 
-          echo "✅ sdkmanager version:"
-          $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager --version
+          # Install SDK + Build-tools + NDK
+          yes | sdkmanager --licenses
+          yes | sdkmanager "platform-tools" "platforms;android-33" "build-tools;33.0.2" "build-tools;36.1.0" "ndk;25.2.9519653"
 
-          # install versi stabil
-          yes | sdkmanager \
-            "platform-tools" "platforms;android-33" "build-tools;33.0.2" "ndk;25.2.9519653"
-
-          # paksa install build-tools 36.1.0 (biar p4a gak error kalau minta)
-          yes | sdkmanager "build-tools;36.1.0" || true
-
-          # FIX LICENSE: bikin folder license manual
+          # Tambahkan license manual
           mkdir -p $HOME/android-sdk/licenses
           echo -e "8933bad161af4178b1185d1a37fbf41ea5269c55" > $HOME/android-sdk/licenses/android-sdk-license
+          echo -e "d56f5187479451eabf01fb78af6dfcb131a6481e" >> $HOME/android-sdk/licenses/android-sdk-license
           echo -e "84831b9409646a918e30573bab4c9c91346d8abd" > $HOME/android-sdk/licenses/android-sdk-preview-license
 
       - name: Build APK
-        run: |
-          export ANDROIDSDK=$HOME/android-sdk
-          export ANDROIDNDK=$HOME/android-sdk/ndk/25.2.9519653
-          export PATH=$ANDROIDSDK/cmdline-tools/latest/bin:$PATH
-          export PATH=$ANDROIDSDK/platform-tools:$PATH
-
-          buildozer -v android debug
+        working-directory: robot-trading
+        run: buildozer -v android debug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: app-release
-          path: bin/*.apk
+          name: robot-trading-apk
+          path: robot-trading/bin/*.apk
