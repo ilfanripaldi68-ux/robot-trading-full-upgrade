@@ -1,9 +1,10 @@
-name: Build Android APK
+name: Build APK
 
 on:
   push:
     branches:
       - main
+  pull_request:
 
 jobs:
   build:
@@ -11,26 +12,18 @@ jobs:
 
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v3
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Setup Python
+        uses: actions/setup-python@v4
         with:
-          python-version: '3.10'
+          python-version: "3.10"
 
-      - name: Install dependencies
+      - name: Install Dependencies
         run: |
-          sudo apt-get update -y || true
-          sudo apt-get install -y \
-            git zip unzip openjdk-17-jdk \
-            python3-pip python3-setuptools python3-wheel \
-            libffi-dev libssl-dev libsqlite3-dev zlib1g-dev \
-            pkg-config libgl1-mesa-dev libgles2-mesa-dev \
-            build-essential || true
-
-      - name: Install Buildozer
-        run: |
-          pip install --upgrade pip
+          sudo apt-get update
+          sudo apt-get install -y git zip unzip openjdk-17-jdk
+          python -m pip install --upgrade pip
           pip install buildozer cython virtualenv
 
       - name: Install Android SDK & Accept Licenses
@@ -38,45 +31,45 @@ jobs:
           mkdir -p $HOME/android-sdk/cmdline-tools
           cd $HOME/android-sdk/cmdline-tools
 
-          # Download ulang kalau corrupt
+          # Download SDK tools
           curl -fo sdk.zip https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
           unzip -o sdk.zip -d latest
           rm sdk.zip
 
-          # Pastikan struktur benar agar sdkmanager bisa dipanggil
+          # Fix folder structure
           mv latest/cmdline-tools/* latest/ || true
           rm -rf latest/cmdline-tools || true
 
           export ANDROID_HOME=$HOME/android-sdk
           export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH
 
-          echo "✅ sdkmanager path check: $(which sdkmanager || echo 'NOT FOUND')"
+          echo "✅ sdkmanager path: $(which sdkmanager)"
 
-          # Coba jalankan sdkmanager, jika gagal kasih log
-          sdkmanager --version || (echo "❌ sdkmanager tidak ditemukan"; ls -R $HOME/android-sdk/cmdline-tools)
+          # Accept all licenses
+          yes | sdkmanager --licenses
 
-          # Accept semua license
-          yes | sdkmanager --licenses || true
+          # Install ONLY the correct versions (no 36.1!)
+          yes | sdkmanager --install \
+            "platform-tools" \
+            "platforms;android-33" \
+            "build-tools;33.0.2" \
+            "ndk;25.1.8937393"
 
-          # Install versi spesifik biar tidak ketarik 36.1
-          yes | sdkmanager "platform-tools" "platforms;android-33" "build-tools;33.0.2" "ndk;25.1.8937393"
-
-      - name: Debug Installed SDK
-        run: |
-          echo "📂 Isi build-tools:"
-          ls -R $HOME/android-sdk/build-tools || true
-          echo "📂 Isi ndk:"
-          ls -R $HOME/android-sdk/ndk || true
+          # Verify build-tools
+          echo "📂 Build-tools installed:"
+          ls -R $ANDROID_HOME/build-tools
 
       - name: Build APK
-        working-directory: robot-trading
+        working-directory: .
+        env:
+          ANDROIDSDK: $HOME/android-sdk
+          ANDROIDNDK: $HOME/android-sdk/ndk/25.1.8937393
+          PATH: $HOME/android-sdk/cmdline-tools/latest/bin:$HOME/android-sdk/platform-tools:$PATH
         run: |
-          echo "🚀 Start Buildozer"
-          buildozer -v android debug || (echo "❌ Build gagal, coba ulang dengan log lebih detail" && buildozer android clean && buildozer -v android debug)
+          buildozer -v android debug
 
       - name: Upload APK
-        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: robot-trading-apk
-          path: robot-trading/bin/*.apk
+          path: bin/*.apk
