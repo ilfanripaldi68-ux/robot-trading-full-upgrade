@@ -21,6 +21,10 @@ jobs:
 
       - name: Install dependencies
         run: |
+          sudo apt-get update -y
+          sudo apt-get install -y git zip unzip openjdk-17-jdk python3-pip python3-setuptools python3-wheel \
+            libffi-dev libssl-dev libsqlite3-dev zlib1g-dev pkg-config libgl1-mesa-dev libgles2-mesa-dev \
+            build-essential
           python -m pip install --upgrade pip
           pip install cython buildozer
 
@@ -32,7 +36,7 @@ jobs:
           unzip sdk.zip -d latest
           rm sdk.zip
 
-          # ✅ Fix sdkmanager path
+          # Perbaiki path sdkmanager
           mv latest/cmdline-tools/* latest/
           rm -rf latest/cmdline-tools
 
@@ -41,22 +45,30 @@ jobs:
           echo "✅ sdkmanager version:"
           $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager --version
 
+          # Auto accept semua license biar gak stuck
           yes | $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager --licenses
+
+          # Force install build-tools 33.0.2 + platform-tools
           yes | $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager \
             "platform-tools" "platforms;android-33" "build-tools;33.0.2" "ndk;25.2.9519653"
+
+          # Tambahan: accept juga build-tools versi baru biar gak error license
+          yes | $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager "build-tools;36.0.0" || true
+          yes | $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager "build-tools;36.0.1" || true
+          yes | $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager "build-tools;36.1.0" || true
 
       - name: Debug check buildozer.spec
         run: |
           if [ ! -f buildozer.spec ]; then
-            echo "❌ buildozer.spec not found in root dir!"
+            echo "❌ buildozer.spec not found!"
             ls -la
             exit 1
-          else
-            echo "✅ buildozer.spec ditemukan!"
           fi
 
       - name: Build APK
         run: |
+          export ANDROIDSDK=$HOME/android-sdk
+          export ANDROIDNDK=$HOME/android-sdk/ndk/25.2.9519653
           export PATH=$HOME/android-sdk/cmdline-tools/latest/bin:$PATH
           buildozer -v android debug
 
